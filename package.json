@@ -1,6 +1,6 @@
 {
   "name": "mcp-pdf-vision",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "MCP server for PDF analysis using Claude's vision capabilities",
   "main": "dist/index.js",
   "type": "module",
@@ -10,14 +10,20 @@
     "dev": "tsx src/index.ts"
   },
   "bin": {
-    "mcp-pdf-vision": "./dist/index.js"
+    "mcp-pdf-vision": "dist/index.js"
   },
-  "keywords": ["mcp", "pdf", "vision", "claude", "ai"],
+  "keywords": [
+    "mcp",
+    "pdf",
+    "vision",
+    "claude",
+    "ai"
+  ],
   "author": "Taehoon Kim",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MIMICLab/mcp-pdf-vision.git"
+    "url": "git+https://github.com/MIMICLab/mcp-pdf-vision.git"
   },
   "files": [
     "dist/**/*",

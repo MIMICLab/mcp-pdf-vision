@@ -11,7 +11,10 @@ import { PDFDocument } from 'pdf-lib';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { createCanvas } from 'canvas';
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 const server = new Server(
   {
@@ -78,43 +81,31 @@ async function extractPage(sessionId: string, pageNum: number, dpi: number = 150
   const outputImagePath = path.join(session.outputDir, `page_${pageNum}.png`);
   
   try {
-    // PDF 파일 읽기
-    const data = new Uint8Array(await fs.readFile(session.pdfPath));
+    // pdftoppm을 직접 사용 (가장 안정적)
+    const tempOutputPath = path.join(session.outputDir, `temp_page_${pageNum}`);
+    const dpiArg = `-r ${dpi}`;
     
-    // PDF 문서 로드
-    const loadingTask = pdfjsLib.getDocument({
-      data: data,
-      useSystemFonts: true,
-    });
+    // pdftoppm 명령어 실행
+    const command = `pdftoppm -png -f ${pageNum} -l ${pageNum} ${dpiArg} -singlefile "${session.pdfPath}" "${tempOutputPath}"`;
     
-    const pdfDoc = await loadingTask.promise;
-    const page = await pdfDoc.getPage(pageNum);
+    console.log(`Executing: ${command}`);
+    await execAsync(command);
     
-    // 스케일 계산 (DPI 기반)
-    const scale = dpi / 72; // PDF는 기본 72 DPI
-    const viewport = page.getViewport({ scale });
+    // 생성된 파일을 찾아서 이동
+    const generatedFile = `${tempOutputPath}.png`;
     
-    // Canvas 생성
-    const canvas = createCanvas(viewport.width, viewport.height);
-    const context = canvas.getContext('2d');
+    // 파일이 존재하는지 확인
+    await fs.access(generatedFile);
     
-    // 페이지 렌더링
-    const renderContext = {
-      canvasContext: context,
-      viewport: viewport,
-    } as any;
-    
-    await page.render(renderContext).promise;
-    
-    // 이미지로 저장
-    const buffer = canvas.toBuffer('image/png');
-    await fs.writeFile(outputImagePath, buffer);
+    // 원하는 위치로 이동
+    await fs.rename(generatedFile, outputImagePath);
     
     session.extractedPages.set(pageNum, outputImagePath);
     
     return outputImagePath;
   } catch (error) {
-    throw new Error(`Failed to convert page ${pageNum}: ${error}`);
+    console.error(`Error extracting page ${pageNum}:`, error);
+    throw new Error(`Failed to convert page ${pageNum}: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
